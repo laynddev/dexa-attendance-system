@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model roles {
+  id          String       @id
+  name        String       @unique
+  description String?
+  user_roles  user_roles[]
+}
+
+model user_roles {
+  user_id String
+  role_id String
+  roles   roles @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  users   users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, role_id])
+}
+
+model users {
+  id            String       @id
+  email         String       @unique
+  password_hash String
+  is_active     Boolean      @default(true)
+  created_at    DateTime     @default(now())
+  updated_at    DateTime
+  user_roles    user_roles[]
+}
+
+model Employee {
+  id             String   @id @default(uuid())
+  userId         String   @unique @map("user_id")
+  employeeNumber String   @unique @map("employee_number")
+  name           String
+  photoUrl       String?  @map("photo_url")
+  position       String
+  department     String?
+  phone          String?
+  status         String   @default("ACTIVE")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("employees")
+}
