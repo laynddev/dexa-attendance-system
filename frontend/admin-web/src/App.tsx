@@ -1,63 +1,91 @@
-import { useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+} from 'react-router-dom';
 
-type ProfileNotification = {
-  employeeId: string;
-  userId: string;
-  name: string;
-  updatedFields: Record<string, unknown>;
-};
+import ProtectedRoute from './components/ProtectedRoute';
+import AdminLayout from './components/AdminLayout';
+
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+import EmployeesPage from './pages/EmployeesPage';
+import AttendancePage from './pages/AttendancePage';
+import AddEmployeePage from './pages/AddEmployeePage';
+import EditEmployeePage from './pages/EditEmployeePage';
 
 function App() {
-  const [notification, setNotification] =
-    useState<ProfileNotification | null>(null);
-
-  useEffect(() => {
-    const socket = io('http://localhost:3002');
-
-    socket.on('connect', () => {
-      console.log('Admin connected to notification WebSocket');
-    });
-
-    socket.on(
-      'employee-profile-updated',
-      (data: ProfileNotification) => {
-        console.log('Notification received:', data);
-        setNotification(data);
-      },
-    );
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
-
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold">
-        Admin Dashboard
-      </h1>
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/login"
+          element={<LoginPage />}
+        />
 
-      {notification && (
-        <div className="mt-6 rounded-lg border p-4 shadow">
-          <h2 className="font-bold">
-            Employee Profile Updated
-          </h2>
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <DashboardPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
 
-          <p className="mt-2">
-            {notification.name} updated their profile.
-          </p>
+        <Route
+          path="/employees"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <EmployeesPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
 
-          <pre className="mt-2">
-            {JSON.stringify(
-              notification.updatedFields,
-              null,
-              2,
-            )}
-          </pre>
-        </div>
-      )}
-    </div>
+        <Route
+          path="/employees/add"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <AddEmployeePage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/employees/:id/edit"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <EditEmployeePage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/attendance"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <AttendancePage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/"
+          element={<Navigate to="/login" replace />}
+        />
+
+      </Routes>
+    </BrowserRouter>
   );
 }
 

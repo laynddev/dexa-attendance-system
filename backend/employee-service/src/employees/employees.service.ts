@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, NotFoundException} from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { firstValueFrom } from 'rxjs';
@@ -27,32 +31,35 @@ export class EmployeesService {
       // 1. Create user through Auth Service
       const response = await firstValueFrom(
         this.httpService.post(
-            'http://localhost:3001/auth/users',
-            {
-                email: createEmployeeDto.email,
-                password: createEmployeeDto.password,
+          'http://localhost:3001/auth/users',
+          {
+            email: createEmployeeDto.email,
+            password: createEmployeeDto.password,
+          },
+          {
+            headers: {
+              Authorization: authorization,
             },
-            {
-                headers: {
-                Authorization: authorization,
-                },
-            },
-            ),
+          },
+        ),
       );
 
       const userId = response.data.id;
 
-      const employee = await this.prisma.employee.create({
-        data: {
-          userId,
-          employeeNumber: createEmployeeDto.employeeNumber,
-          name: createEmployeeDto.name,
-          photoUrl: createEmployeeDto.photoUrl,
-          position: createEmployeeDto.position,
-          department: createEmployeeDto.department,
-          phone: createEmployeeDto.phone,
-        },
-      });
+      const employee =
+        await this.prisma.employee.create({
+          data: {
+            userId,
+            employeeNumber:
+              createEmployeeDto.employeeNumber,
+            name: createEmployeeDto.name,
+            photoUrl: createEmployeeDto.photoUrl,
+            position: createEmployeeDto.position,
+            department:
+              createEmployeeDto.department,
+            phone: createEmployeeDto.phone,
+          },
+        });
 
       await this.rabbitMQ.publish(
         'attendance.events',
@@ -65,7 +72,8 @@ export class EmployeesService {
           entityId: employee.id,
           payload: {
             targetUserId: employee.userId,
-            employeeNumber: employee.employeeNumber,
+            employeeNumber:
+              employee.employeeNumber,
             name: employee.name,
             position: employee.position,
             department: employee.department,
@@ -75,7 +83,10 @@ export class EmployeesService {
 
       return employee;
     } catch (error) {
-      console.error('Failed to create employee:', error);
+      console.error(
+        'Failed to create employee:',
+        error,
+      );
 
       throw new InternalServerErrorException(
         'Failed to create employee',
@@ -100,89 +111,157 @@ export class EmployeesService {
   }
 
   async update(
-  id: string,
-  updateEmployeeDto: UpdateEmployeeDto,
-  actorUserId: string,
-) {
-  const employee = await this.prisma.employee.update({
-    where: { id },
-    data: updateEmployeeDto,
-  });
+    id: string,
+    updateEmployeeDto: UpdateEmployeeDto,
+    actorUserId: string,
+  ) {
+    const employee =
+      await this.prisma.employee.update({
+        where: {
+          id,
+        },
+        data: updateEmployeeDto,
+      });
 
-  await this.rabbitMQ.publish(
-    'attendance.events',
-    'employee.updated',
-    {
-      eventType: 'EMPLOYEE_UPDATED',
-      service: 'employee-service',
-      actorUserId,
-      entityType: 'EMPLOYEE',
-      entityId: employee.id,
-      payload: {
-        targetUserId: employee.userId,
-        updatedFields: updateEmployeeDto,
+    await this.rabbitMQ.publish(
+      'attendance.events',
+      'employee.updated',
+      {
+        eventType: 'EMPLOYEE_UPDATED',
+        service: 'employee-service',
+        actorUserId,
+        entityType: 'EMPLOYEE',
+        entityId: employee.id,
+        payload: {
+          targetUserId: employee.userId,
+          updatedFields: updateEmployeeDto,
+        },
       },
-    },
-  );
+    );
 
-  return employee;
-}
-
-  async findByUserId(userId: string) {
-  return this.prisma.employee.findUnique({
-    where: {
-      userId,
-    },
-  });
-}
-
-async updateMyProfile(
-  userId: string,
-  updateMyProfileDto: UpdateMyProfileDto,
-) {
-  const employee = await this.prisma.employee.findUnique({
-    where: {
-      userId,
-    },
-  });
-
-  if (!employee) {
-    throw new NotFoundException('Employee profile not found');
+    return employee;
   }
 
-  const updatedEmployee = await this.prisma.employee.update({
-    where: {
-      id: employee.id,
-    },
-    data: updateMyProfileDto,
-  });
+  async findByUserId(userId: string) {
+    return this.prisma.employee.findUnique({
+      where: {
+        userId,
+      },
+    });
+  }
 
-  await this.rabbitMQ.publish(
-    'attendance.events',
-    'employee.profile.updated',
-    {
-      eventType: 'EMPLOYEE_PROFILE_UPDATED',
-      service: 'employee-service',
-      actorUserId: userId,
-      entityType: 'EMPLOYEE',
-      entityId: updatedEmployee.id,
-      payload: {
-        targetUserId: updatedEmployee.userId,
+  async updateMyProfile(
+    userId: string,
+    updateMyProfileDto: UpdateMyProfileDto,
+  ) {
+    const employee =
+      await this.prisma.employee.findUnique({
+        where: {
+          userId,
+        },
+      });
+
+    if (!employee) {
+      throw new NotFoundException(
+        'Employee profile not found',
+      );
+    }
+
+    const updatedEmployee =
+      await this.prisma.employee.update({
+        where: {
+          id: employee.id,
+        },
+        data: updateMyProfileDto,
+      });
+
+    await this.rabbitMQ.publish(
+      'attendance.events',
+      'employee.profile.updated',
+      {
+        eventType: 'EMPLOYEE_PROFILE_UPDATED',
+        service: 'employee-service',
+        actorUserId: userId,
+        entityType: 'EMPLOYEE',
+        entityId: updatedEmployee.id,
+        payload: {
+          targetUserId: updatedEmployee.userId,
+          updatedFields: updateMyProfileDto,
+        },
+      },
+    );
+
+    this.notificationGateway.sendEmployeeProfileUpdated(
+      {
+        employeeId: updatedEmployee.id,
+        userId: updatedEmployee.userId,
+        name: updatedEmployee.name,
         updatedFields: updateMyProfileDto,
       },
-    },
-  );
+    );
 
-  
+    return updatedEmployee;
+  }
 
-  this.notificationGateway.sendEmployeeProfileUpdated({
-    employeeId: updatedEmployee.id,
-    userId: updatedEmployee.userId,
-    name: updatedEmployee.name,
-    updatedFields: updateMyProfileDto,
-  });
+  async updateMyPhoto(
+    userId: string,
+    filename: string,
+  ) {
+    const employee =
+      await this.prisma.employee.findUnique({
+        where: {
+          userId,
+        },
+      });
 
-  return updatedEmployee;
-}
+    if (!employee) {
+      throw new NotFoundException(
+        'Employee profile not found',
+      );
+    }
 
+    const photoUrl =
+      `http://localhost:3002/uploads/profile/${filename}`;
+
+    const updatedEmployee =
+      await this.prisma.employee.update({
+        where: {
+          id: employee.id,
+        },
+        data: {
+          photoUrl,
+        },
+      });
+
+    await this.rabbitMQ.publish(
+      'attendance.events',
+      'employee.profile.updated',
+      {
+        eventType: 'EMPLOYEE_PROFILE_UPDATED',
+        service: 'employee-service',
+        actorUserId: userId,
+        entityType: 'EMPLOYEE',
+        entityId: updatedEmployee.id,
+        payload: {
+          targetUserId: updatedEmployee.userId,
+          updatedFields: {
+            photoUrl,
+          },
+        },
+      },
+    );
+
+    this.notificationGateway.sendEmployeeProfileUpdated(
+      {
+        employeeId: updatedEmployee.id,
+        userId: updatedEmployee.userId,
+        name: updatedEmployee.name,
+        updatedFields: {
+          photoUrl,
+        },
+      },
+    );
+
+    return updatedEmployee;
+  }
 }
