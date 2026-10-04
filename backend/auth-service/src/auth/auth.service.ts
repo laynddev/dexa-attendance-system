@@ -1,13 +1,15 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { PrismaService } from '../prisma/prisma.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly rabbitMQ: AmqpConnection,
   ) {}
 
   async login(email: string, password: string) {
@@ -45,12 +47,31 @@ export class AuthService {
       roles,
     };
 
+    await this.rabbitMQ.publish(
+      'attendance.events',
+      'auth.user.login',
+      {
+        eventType: 'USER_LOGIN',
+        service: 'auth-service',
+        actorUserId: user.id,
+        entityType: 'USER',
+        entityId: user.id,
+        payload: {
+          email: user.email,
+        },
+      },
+    );
+
     return {
       accessToken: await this.jwtService.signAsync(payload),
     };
   }
 
-async createUser(email: string, password: string) {
+async createUser(
+  email: string,
+  password: string,
+  actorUserId: string,
+) {
   const existingUser = await this.prisma.user.findUnique({
     where: {
       email,
@@ -86,6 +107,22 @@ async createUser(email: string, password: string) {
     },
   });
 
+ await this.rabbitMQ.publish(
+  'attendance.events',
+  'auth.user.created',
+  {
+    eventType: 'USER_CREATED',
+    service: 'auth-service',
+    actorUserId,
+    entityType: 'USER',
+    entityId: user.id,
+    payload: {
+      email: user.email,
+      role: 'EMPLOYEE',
+    },
+  },
+);
+
   return {
     id: user.id,
     email: user.email,
@@ -94,4 +131,65 @@ async createUser(email: string, password: string) {
     updatedAt: user.updatedAt,
   };
 }
+
+async changePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+) {
+  const user = await this.prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+  });
+
+  if (!user || !user.isActive) {
+    throw new UnauthorizedException('User not found or inactive');
+  }
+
+  const passwordValid = await bcrypt.compare(
+    currentPassword,
+    user.passwordHash,
+  );
+
+  if (!passwordValid) {
+    throw new UnauthorizedException(
+      'Current password is incorrect',
+    );
+  }
+
+  const newPasswordHash = await bcrypt.hash(
+    newPassword,
+    10,
+  );
+
+  await this.prisma.user.update({
+    where: {
+      id: userId,
+    },
+    data: {
+      passwordHash: newPasswordHash,
+    },
+  });
+
+  await this.rabbitMQ.publish(
+    'attendance.events',
+    'auth.password.changed',
+    {
+      eventType: 'PASSWORD_CHANGED',
+      service: 'auth-service',
+      actorUserId: userId,
+      entityType: 'USER',
+      entityId: userId,
+      payload: {
+        email: user.email,
+      },
+    },
+  );
+
+  return {
+    message: 'Password changed successfully',
+  };
+}
+
 }

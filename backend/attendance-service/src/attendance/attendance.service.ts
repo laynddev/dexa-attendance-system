@@ -3,11 +3,15 @@ import {
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AttendanceService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+      private readonly prisma: PrismaService,
+      private readonly rabbitMQ: AmqpConnection,
+    ) {}
     
 
     async findEmployeeByUserId(userId: string) {
@@ -61,16 +65,36 @@ export class AttendanceService {
       );
     }
 
-    return this.prisma.attendance.create({
-      data: {
-        employeeId,
-        attendanceDate,
-        checkInAt: now,
-      },
-      include: {
-        employee: true,
-      },
-    });
+    const attendance = await this.prisma.attendance.create({
+  data: {
+    employeeId,
+    attendanceDate,
+    checkInAt: now,
+  },
+  include: {
+    employee: true,
+  },
+});
+
+await this.rabbitMQ.publish(
+  'attendance.events',
+  'attendance.check-in',
+  {
+    eventType: 'ATTENDANCE_CHECK_IN',
+    service: 'attendance-service',
+    actorUserId: userId,
+    entityType: 'ATTENDANCE',
+    entityId: attendance.id,
+    payload: {
+      employeeId: employee.id,
+      employeeNumber: employee.employee_number,
+      attendanceDate: attendance.attendanceDate,
+      checkInAt: attendance.checkInAt,
+    },
+  },
+);
+
+return attendance;
   }
 
 
@@ -129,18 +153,36 @@ async checkOut(userId: string) {
     );
   }
 
-  // 9. Update check-out time
-  return this.prisma.attendance.update({
-    where: {
-      id: attendance.id,
+  const updatedAttendance = await this.prisma.attendance.update({
+  where: { id: attendance.id },
+  data: {
+    checkOutAt: now,
+  },
+  include: {
+    employee: true,
+  },
+});
+
+await this.rabbitMQ.publish(
+  'attendance.events',
+  'attendance.check-out',
+  {
+    eventType: 'ATTENDANCE_CHECK_OUT',
+    service: 'attendance-service',
+    actorUserId: userId,
+    entityType: 'ATTENDANCE',
+    entityId: updatedAttendance.id,
+    payload: {
+      employeeId: employee.id,
+      employeeNumber: employee.employee_number,
+      attendanceDate: updatedAttendance.attendanceDate,
+      checkInAt: updatedAttendance.checkInAt,
+      checkOutAt: updatedAttendance.checkOutAt,
     },
-    data: {
-      checkOutAt: now,
-    },
-    include: {
-      employee: true,
-    },
-  });
+  },
+);
+
+return updatedAttendance;
 }
 
 async summary(

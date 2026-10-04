@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -10,6 +11,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -27,10 +29,12 @@ export class AuthController {
 @Roles('ADMIN')
 async createUser(
   @Body() body: { email: string; password: string },
+  @Req() request: any,
 ) {
   return this.authService.createUser(
     body.email,
     body.password,
+    request.user.userId,
   );
 }
 
@@ -49,4 +53,18 @@ async adminTest(@Req() request: any) {
     user: request.user,
   };
 }
+
+@Patch('change-password')
+@UseGuards(JwtAuthGuard)
+async changePassword(
+  @Body() changePasswordDto: ChangePasswordDto,
+  @Req() request: any,
+) {
+  return this.authService.changePassword(
+    request.user.userId,
+    changePasswordDto.currentPassword,
+    changePasswordDto.newPassword,
+  );
+}
+
 }

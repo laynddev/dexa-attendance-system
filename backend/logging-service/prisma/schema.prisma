@@ -1,0 +1,20 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  eventType   String   @map("event_type")
+  service     String
+  actorUserId String?  @map("actor_user_id")
+  entityType  String?  @map("entity_type")
+  entityId    String?  @map("entity_id")
+  payload     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+}

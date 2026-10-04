@@ -1,22 +1,28 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { firstValueFrom } from 'rxjs';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
+import { NotificationGateway } from './notification.gateway';
 
 @Injectable()
 export class EmployeesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly httpService: HttpService,
+    private readonly rabbitMQ: AmqpConnection,
+    private readonly notificationGateway: NotificationGateway,
   ) {}
 
-    async create(
+  async create(
     createEmployeeDto: CreateEmployeeDto,
     authorization: string,
-    ) {
+    actorUserId: string,
+  ) {
     try {
       // 1. Create user through Auth Service
       const response = await firstValueFrom(
@@ -36,8 +42,7 @@ export class EmployeesService {
 
       const userId = response.data.id;
 
-      // 2. Create employee profile
-      return this.prisma.employee.create({
+      const employee = await this.prisma.employee.create({
         data: {
           userId,
           employeeNumber: createEmployeeDto.employeeNumber,
@@ -48,6 +53,27 @@ export class EmployeesService {
           phone: createEmployeeDto.phone,
         },
       });
+
+      await this.rabbitMQ.publish(
+        'attendance.events',
+        'employee.created',
+        {
+          eventType: 'EMPLOYEE_CREATED',
+          service: 'employee-service',
+          actorUserId,
+          entityType: 'EMPLOYEE',
+          entityId: employee.id,
+          payload: {
+            targetUserId: employee.userId,
+            employeeNumber: employee.employeeNumber,
+            name: employee.name,
+            position: employee.position,
+            department: employee.department,
+          },
+        },
+      );
+
+      return employee;
     } catch (error) {
       console.error('Failed to create employee:', error);
 
@@ -73,14 +99,34 @@ export class EmployeesService {
     });
   }
 
-  async update(id: string, updateEmployeeDto: UpdateEmployeeDto) {
-    return this.prisma.employee.update({
-      where: {
-        id,
+  async update(
+  id: string,
+  updateEmployeeDto: UpdateEmployeeDto,
+  actorUserId: string,
+) {
+  const employee = await this.prisma.employee.update({
+    where: { id },
+    data: updateEmployeeDto,
+  });
+
+  await this.rabbitMQ.publish(
+    'attendance.events',
+    'employee.updated',
+    {
+      eventType: 'EMPLOYEE_UPDATED',
+      service: 'employee-service',
+      actorUserId,
+      entityType: 'EMPLOYEE',
+      entityId: employee.id,
+      payload: {
+        targetUserId: employee.userId,
+        updatedFields: updateEmployeeDto,
       },
-      data: updateEmployeeDto,
-    });
-  }
+    },
+  );
+
+  return employee;
+}
 
   async findByUserId(userId: string) {
   return this.prisma.employee.findUnique({
@@ -89,4 +135,54 @@ export class EmployeesService {
     },
   });
 }
+
+async updateMyProfile(
+  userId: string,
+  updateMyProfileDto: UpdateMyProfileDto,
+) {
+  const employee = await this.prisma.employee.findUnique({
+    where: {
+      userId,
+    },
+  });
+
+  if (!employee) {
+    throw new NotFoundException('Employee profile not found');
+  }
+
+  const updatedEmployee = await this.prisma.employee.update({
+    where: {
+      id: employee.id,
+    },
+    data: updateMyProfileDto,
+  });
+
+  await this.rabbitMQ.publish(
+    'attendance.events',
+    'employee.profile.updated',
+    {
+      eventType: 'EMPLOYEE_PROFILE_UPDATED',
+      service: 'employee-service',
+      actorUserId: userId,
+      entityType: 'EMPLOYEE',
+      entityId: updatedEmployee.id,
+      payload: {
+        targetUserId: updatedEmployee.userId,
+        updatedFields: updateMyProfileDto,
+      },
+    },
+  );
+
+  
+
+  this.notificationGateway.sendEmployeeProfileUpdated({
+    employeeId: updatedEmployee.id,
+    userId: updatedEmployee.userId,
+    name: updatedEmployee.name,
+    updatedFields: updateMyProfileDto,
+  });
+
+  return updatedEmployee;
+}
+
 }

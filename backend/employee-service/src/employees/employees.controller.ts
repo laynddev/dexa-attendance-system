@@ -8,12 +8,14 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { CreateEmployeeDto } from './dto/create-employee.dto';
-import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { EmployeesService } from './employees.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
+
+import { CreateEmployeeDto } from './dto/create-employee.dto';
+import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 
 @Controller('employees')
 export class EmployeesController {
@@ -24,6 +26,18 @@ export class EmployeesController {
 async me(@Req() request: any) {
   return this.employeesService.findByUserId(
     request.user.userId,
+  );
+}
+
+@Patch('me')
+@UseGuards(JwtAuthGuard)
+async updateMyProfile(
+  @Body() updateMyProfileDto: UpdateMyProfileDto,
+  @Req() request: any,
+) {
+  return this.employeesService.updateMyProfile(
+    request.user.userId,
+    updateMyProfileDto,
   );
 }
 
@@ -39,6 +53,7 @@ async create(
   return this.employeesService.create(
     createEmployeeDto,
     authorization,
+    request.user.userId,
   );
 }
 
@@ -59,12 +74,17 @@ async create(
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
-  async update(
-    @Param('id') id: string,
-    @Body() updateEmployeeDto: UpdateEmployeeDto,
-  ) {
-    return this.employeesService.update(id, updateEmployeeDto);
-  }
+async update(
+  @Param('id') id: string,
+  @Body() updateEmployeeDto: UpdateEmployeeDto,
+  @Req() request: any,
+) {
+  return this.employeesService.update(
+    id,
+    updateEmployeeDto,
+    request.user.userId,
+  );
+}
 
 
 }
