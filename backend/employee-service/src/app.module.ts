@@ -12,7 +12,7 @@ import { ConfigModule } from '@nestjs/config';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    PrismaModule, 
+    PrismaModule,
     EmployeesModule,
   ],
   controllers: [AppController],

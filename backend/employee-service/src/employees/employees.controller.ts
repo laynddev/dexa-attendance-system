@@ -30,16 +30,12 @@ import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 
 @Controller('employees')
 export class EmployeesController {
-  constructor(
-    private readonly employeesService: EmployeesService,
-  ) {}
+  constructor(private readonly employeesService: EmployeesService) {}
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async me(@Req() request: any) {
-    return this.employeesService.findByUserId(
-      request.user.userId,
-    );
+    return this.employeesService.findByUserId(request.user.userId);
   }
 
   @Patch('me')
@@ -60,15 +56,10 @@ export class EmployeesController {
     FileInterceptor('photo', {
       storage: diskStorage({
         destination: './uploads/profile',
-        filename: (
-          request,
-          file,
-          callback,
-        ) => {
-          const uniqueName =
-            `${Date.now()}-${Math.round(
-              Math.random() * 1e9,
-            )}${extname(file.originalname)}`;
+        filename: (request, file, callback) => {
+          const uniqueName = `${Date.now()}-${Math.round(
+            Math.random() * 1e9,
+          )}${extname(file.originalname)}`;
 
           callback(null, uniqueName);
         },
@@ -78,16 +69,8 @@ export class EmployeesController {
         fileSize: 5 * 1024 * 1024,
       },
 
-      fileFilter: (
-        request,
-        file,
-        callback,
-      ) => {
-        const allowedMimeTypes = [
-          'image/jpeg',
-          'image/png',
-          'image/webp',
-        ];
+      fileFilter: (request, file, callback) => {
+        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
         if (!allowedMimeTypes.includes(file.mimetype)) {
           return callback(
@@ -124,8 +107,7 @@ export class EmployeesController {
     @Body() createEmployeeDto: CreateEmployeeDto,
     @Req() request: any,
   ) {
-    const authorization =
-      request.headers.authorization;
+    const authorization = request.headers.authorization;
 
     return this.employeesService.create(
       createEmployeeDto,
@@ -134,25 +116,20 @@ export class EmployeesController {
     );
   }
 
-@Get()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
-async findAll(
-  @Query('page') page?: string,
-  @Query('limit') limit?: string,
-) {
-  return this.employeesService.findAll(
-    page ? Number(page) : 1,
-    limit ? Number(limit) : 10,
-  );
-}
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.employeesService.findAll(
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 10,
+    );
+  }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  async findOne(
-    @Param('id') id: string,
-  ) {
+  async findOne(@Param('id') id: string) {
     return this.employeesService.findOne(id);
   }
 
@@ -171,16 +148,10 @@ async findAll(
     );
   }
 
-    @Delete(':id')
+  @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  async remove(
-    @Param('id') id: string,
-    @Req() request: any,
-  ) {
-    return this.employeesService.remove(
-      id,
-      request.user.userId,
-    );
+  async remove(@Param('id') id: string, @Req() request: any) {
+    return this.employeesService.remove(id, request.user.userId);
   }
 }

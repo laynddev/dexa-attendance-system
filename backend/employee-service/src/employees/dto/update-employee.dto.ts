@@ -1,9 +1,4 @@
-import {
-  IsIn,
-  IsOptional,
-  IsString,
-  Matches,
-} from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches } from 'class-validator';
 
 export class UpdateEmployeeDto {
   @IsOptional()
@@ -25,8 +20,7 @@ export class UpdateEmployeeDto {
   @IsOptional()
   @IsString()
   @Matches(/^\d{10,15}$/, {
-    message:
-      'phone must contain only digits and be between 10 and 15 digits',
+    message: 'phone must contain only digits and be between 10 and 15 digits',
   })
   phone?: string;
 

@@ -19,33 +19,14 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:5174',
-    ],
-    methods: [
-      'GET',
-      'POST',
-      'PATCH',
-      'PUT',
-      'DELETE',
-    ],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-    ],
+    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  app.use(
-    '/uploads',
-    express.static(
-      join(process.cwd(), 'uploads'),
-    ),
-  );
+  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
-  await app.listen(
-    process.env.PORT ?? 3000,
-  );
+  await app.listen(process.env.PORT ?? 3000);
 }
 
 bootstrap();

@@ -28,8 +28,7 @@ export class EmployeesService {
     actorUserId: string,
   ) {
     try {
-      const lastEmployee =
-      await this.prisma.employee.findFirst({
+      const lastEmployee = await this.prisma.employee.findFirst({
         where: {
           employeeNumber: {
             startsWith: 'EMP',
@@ -43,23 +42,19 @@ export class EmployeesService {
         },
       });
 
-    let nextNumber = 1;
+      let nextNumber = 1;
 
-    if (lastEmployee) {
-      const currentNumber = Number(
-        lastEmployee.employeeNumber.replace(
-          'EMP',
-          '',
-        ),
-      );
+      if (lastEmployee) {
+        const currentNumber = Number(
+          lastEmployee.employeeNumber.replace('EMP', ''),
+        );
 
-      if (!Number.isNaN(currentNumber)) {
-        nextNumber = currentNumber + 1;
+        if (!Number.isNaN(currentNumber)) {
+          nextNumber = currentNumber + 1;
+        }
       }
-    }
 
-    const employeeNumber =
-      `EMP${String(nextNumber).padStart(4, '0')}`;
+      const employeeNumber = `EMP${String(nextNumber).padStart(4, '0')}`;
 
       // 1. Create user through Auth Service
       const response = await firstValueFrom(
@@ -79,74 +74,50 @@ export class EmployeesService {
 
       const userId = response.data.id;
 
-      const employee =
-        await this.prisma.employee.create({
-          data: {
-            userId,
-            employeeNumber,
-            name: createEmployeeDto.name,
-            photoUrl: createEmployeeDto.photoUrl,
-            position: createEmployeeDto.position,
-            department:
-              createEmployeeDto.department,
-            phone: createEmployeeDto.phone,
-          },
-        });
-
-      await this.rabbitMQ.publish(
-        'attendance.events',
-        'employee.created',
-        {
-          eventType: 'EMPLOYEE_CREATED',
-          service: 'employee-service',
-          actorUserId,
-          entityType: 'EMPLOYEE',
-          entityId: employee.id,
-          payload: {
-            targetUserId: employee.userId,
-            employeeNumber:
-              employee.employeeNumber,
-            name: employee.name,
-            position: employee.position,
-            department: employee.department,
-          },
+      const employee = await this.prisma.employee.create({
+        data: {
+          userId,
+          employeeNumber,
+          name: createEmployeeDto.name,
+          photoUrl: createEmployeeDto.photoUrl,
+          position: createEmployeeDto.position,
+          department: createEmployeeDto.department,
+          phone: createEmployeeDto.phone,
         },
-      );
+      });
+
+      await this.rabbitMQ.publish('attendance.events', 'employee.created', {
+        eventType: 'EMPLOYEE_CREATED',
+        service: 'employee-service',
+        actorUserId,
+        entityType: 'EMPLOYEE',
+        entityId: employee.id,
+        payload: {
+          targetUserId: employee.userId,
+          employeeNumber: employee.employeeNumber,
+          name: employee.name,
+          position: employee.position,
+          department: employee.department,
+        },
+      });
 
       return employee;
     } catch (error) {
-      console.error(
-        'Failed to create employee:',
-        error,
-      );
+      console.error('Failed to create employee:', error);
 
-      throw new InternalServerErrorException(
-        'Failed to create employee',
-      );
+      throw new InternalServerErrorException('Failed to create employee');
     }
   }
 
-async findAll(
-  page = 1,
-  limit = 10,
-) {
-  const safePage =
-    Number.isInteger(page) && page > 0
-      ? page
-      : 1;
+  async findAll(page = 1, limit = 10) {
+    const safePage = Number.isInteger(page) && page > 0 ? page : 1;
 
-  const safeLimit =
-    Number.isInteger(limit) &&
-    limit > 0 &&
-    limit <= 100
-      ? limit
-      : 10;
+    const safeLimit =
+      Number.isInteger(limit) && limit > 0 && limit <= 100 ? limit : 10;
 
-  const skip =
-    (safePage - 1) * safeLimit;
+    const skip = (safePage - 1) * safeLimit;
 
-  const [employees, total] =
-    await Promise.all([
+    const [employees, total] = await Promise.all([
       this.prisma.employee.findMany({
         skip,
         take: safeLimit,
@@ -158,21 +129,19 @@ async findAll(
       this.prisma.employee.count(),
     ]);
 
-  const totalPages = Math.ceil(
-    total / safeLimit,
-  );
+    const totalPages = Math.ceil(total / safeLimit);
 
-  return {
-    data: employees,
+    return {
+      data: employees,
 
-    pagination: {
-      page: safePage,
-      limit: safeLimit,
-      total,
-      totalPages,
-    },
-  };
-}
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages,
+      },
+    };
+  }
 
   async findOne(id: string) {
     return this.prisma.employee.findUnique({
@@ -182,32 +151,27 @@ async findAll(
     });
   }
 
-async update(
-  id: string,
-  updateEmployeeDto: UpdateEmployeeDto,
-  actorUserId: string,
-) {
-  const existingEmployee =
-    await this.prisma.employee.findUnique({
+  async update(
+    id: string,
+    updateEmployeeDto: UpdateEmployeeDto,
+    actorUserId: string,
+  ) {
+    const existingEmployee = await this.prisma.employee.findUnique({
       where: {
         id,
       },
     });
 
-  if (!existingEmployee) {
-    throw new NotFoundException(
-      'Employee not found',
-    );
-  }
+    if (!existingEmployee) {
+      throw new NotFoundException('Employee not found');
+    }
 
-  let employee;
+    let employee;
 
-  if (updateEmployeeDto.status !== undefined) {
-    const isActive =
-      updateEmployeeDto.status === 'ACTIVE';
+    if (updateEmployeeDto.status !== undefined) {
+      const isActive = updateEmployeeDto.status === 'ACTIVE';
 
-    [employee] =
-      await this.prisma.$transaction([
+      [employee] = await this.prisma.$transaction([
         this.prisma.employee.update({
           where: {
             id,
@@ -224,20 +188,16 @@ async update(
           },
         }),
       ]);
-  } else {
-    employee =
-      await this.prisma.employee.update({
+    } else {
+      employee = await this.prisma.employee.update({
         where: {
           id,
         },
         data: updateEmployeeDto,
       });
-  }
+    }
 
-  await this.rabbitMQ.publish(
-    'attendance.events',
-    'employee.updated',
-    {
+    await this.rabbitMQ.publish('attendance.events', 'employee.updated', {
       eventType: 'EMPLOYEE_UPDATED',
       service: 'employee-service',
       actorUserId,
@@ -247,11 +207,10 @@ async update(
         targetUserId: employee.userId,
         updatedFields: updateEmployeeDto,
       },
-    },
-  );
+    });
 
-  return employee;
-}
+    return employee;
+  }
 
   async findByUserId(userId: string) {
     return this.prisma.employee.findUnique({
@@ -265,26 +224,22 @@ async update(
     userId: string,
     updateMyProfileDto: UpdateMyProfileDto,
   ) {
-    const employee =
-      await this.prisma.employee.findUnique({
-        where: {
-          userId,
-        },
-      });
+    const employee = await this.prisma.employee.findUnique({
+      where: {
+        userId,
+      },
+    });
 
     if (!employee) {
-      throw new NotFoundException(
-        'Employee profile not found',
-      );
+      throw new NotFoundException('Employee profile not found');
     }
 
-    const updatedEmployee =
-      await this.prisma.employee.update({
-        where: {
-          id: employee.id,
-        },
-        data: updateMyProfileDto,
-      });
+    const updatedEmployee = await this.prisma.employee.update({
+      where: {
+        id: employee.id,
+      },
+      data: updateMyProfileDto,
+    });
 
     await this.rabbitMQ.publish(
       'attendance.events',
@@ -302,47 +257,37 @@ async update(
       },
     );
 
-    this.notificationGateway.sendEmployeeProfileUpdated(
-      {
-        employeeId: updatedEmployee.id,
-        userId: updatedEmployee.userId,
-        name: updatedEmployee.name,
-        updatedFields: updateMyProfileDto,
-      },
-    );
+    this.notificationGateway.sendEmployeeProfileUpdated({
+      employeeId: updatedEmployee.id,
+      userId: updatedEmployee.userId,
+      name: updatedEmployee.name,
+      updatedFields: updateMyProfileDto,
+    });
 
     return updatedEmployee;
   }
 
-  async updateMyPhoto(
-    userId: string,
-    filename: string,
-  ) {
-    const employee =
-      await this.prisma.employee.findUnique({
-        where: {
-          userId,
-        },
-      });
+  async updateMyPhoto(userId: string, filename: string) {
+    const employee = await this.prisma.employee.findUnique({
+      where: {
+        userId,
+      },
+    });
 
     if (!employee) {
-      throw new NotFoundException(
-        'Employee profile not found',
-      );
+      throw new NotFoundException('Employee profile not found');
     }
 
-    const photoUrl =
-      `http://localhost:3002/uploads/profile/${filename}`;
+    const photoUrl = `http://localhost:3002/uploads/profile/${filename}`;
 
-    const updatedEmployee =
-      await this.prisma.employee.update({
-        where: {
-          id: employee.id,
-        },
-        data: {
-          photoUrl,
-        },
-      });
+    const updatedEmployee = await this.prisma.employee.update({
+      where: {
+        id: employee.id,
+      },
+      data: {
+        photoUrl,
+      },
+    });
 
     await this.rabbitMQ.publish(
       'attendance.events',
@@ -362,46 +307,37 @@ async update(
       },
     );
 
-    this.notificationGateway.sendEmployeeProfileUpdated(
-      {
-        employeeId: updatedEmployee.id,
-        userId: updatedEmployee.userId,
-        name: updatedEmployee.name,
-        updatedFields: {
-          photoUrl,
-        },
+    this.notificationGateway.sendEmployeeProfileUpdated({
+      employeeId: updatedEmployee.id,
+      userId: updatedEmployee.userId,
+      name: updatedEmployee.name,
+      updatedFields: {
+        photoUrl,
       },
-    );
+    });
 
     return updatedEmployee;
   }
 
-  async remove(
-  id: string,
-  actorUserId: string,
-) {
-  const employee =
-    await this.prisma.employee.findUnique({
+  async remove(id: string, actorUserId: string) {
+    const employee = await this.prisma.employee.findUnique({
       where: {
         id,
       },
     });
 
-  if (!employee) {
-    throw new NotFoundException(
-      'Employee not found',
-    );
-  }
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
 
-  if (employee.status === 'INACTIVE') {
-    return {
-      message: 'Employee is already inactive',
-      employee,
-    };
-  }
+    if (employee.status === 'INACTIVE') {
+      return {
+        message: 'Employee is already inactive',
+        employee,
+      };
+    }
 
-  const [updatedEmployee] =
-    await this.prisma.$transaction([
+    const [updatedEmployee] = await this.prisma.$transaction([
       this.prisma.employee.update({
         where: {
           id: employee.id,
@@ -421,10 +357,7 @@ async update(
       }),
     ]);
 
-  await this.rabbitMQ.publish(
-    'attendance.events',
-    'employee.deleted',
-    {
+    await this.rabbitMQ.publish('attendance.events', 'employee.deleted', {
       eventType: 'EMPLOYEE_DELETED',
       service: 'employee-service',
       actorUserId,
@@ -432,17 +365,15 @@ async update(
       entityId: updatedEmployee.id,
       payload: {
         targetUserId: updatedEmployee.userId,
-        employeeNumber:
-          updatedEmployee.employeeNumber,
+        employeeNumber: updatedEmployee.employeeNumber,
         name: updatedEmployee.name,
         deletionType: 'SOFT_DELETE',
       },
-    },
-  );
+    });
 
-  return {
-    message: 'Employee deleted successfully',
-    employee: updatedEmployee,
-  };
-}
+    return {
+      message: 'Employee deleted successfully',
+      employee: updatedEmployee,
+    };
+  }
 }

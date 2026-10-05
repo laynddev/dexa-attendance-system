@@ -28,10 +28,6 @@ import { NotificationGateway } from './notification.gateway';
     }),
   ],
   controllers: [EmployeesController],
-  providers: [
-    EmployeesService,
-    JwtStrategy,
-    NotificationGateway,
-  ],
+  providers: [EmployeesService, JwtStrategy, NotificationGateway],
 })
 export class EmployeesModule {}

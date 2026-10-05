@@ -19,53 +19,47 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  async login(
-    @Body() body: { email: string; password: string },
-  ) {
+  async login(@Body() body: { email: string; password: string }) {
     return this.authService.login(body.email, body.password);
   }
 
-@Post('users')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
-async createUser(
-  @Body() body: CreateUserDto,
-  @Req() request: any,
-) {
-  return this.authService.createUser(
-    body.email,
-    body.password,
-    request.user.userId,
-  );
-}
+  @Post('users')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async createUser(@Body() body: CreateUserDto, @Req() request: any) {
+    return this.authService.createUser(
+      body.email,
+      body.password,
+      request.user.userId,
+    );
+  }
 
   @Get('me')
-@UseGuards(JwtAuthGuard)
-async me(@Req() request: any) {
-  return request.user;
-}
+  @UseGuards(JwtAuthGuard)
+  async me(@Req() request: any) {
+    return request.user;
+  }
 
-@Get('admin-test')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
-async adminTest(@Req() request: any) {
-  return {
-    message: 'Admin authorization successful',
-    user: request.user,
-  };
-}
+  @Get('admin-test')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async adminTest(@Req() request: any) {
+    return {
+      message: 'Admin authorization successful',
+      user: request.user,
+    };
+  }
 
-@Patch('change-password')
-@UseGuards(JwtAuthGuard)
-async changePassword(
-  @Body() changePasswordDto: ChangePasswordDto,
-  @Req() request: any,
-) {
-  return this.authService.changePassword(
-    request.user.userId,
-    changePasswordDto.currentPassword,
-    changePasswordDto.newPassword,
-  );
-}
-
+  @Patch('change-password')
+  @UseGuards(JwtAuthGuard)
+  async changePassword(
+    @Body() changePasswordDto: ChangePasswordDto,
+    @Req() request: any,
+  ) {
+    return this.authService.changePassword(
+      request.user.userId,
+      changePasswordDto.currentPassword,
+      changePasswordDto.newPassword,
+    );
+  }
 }

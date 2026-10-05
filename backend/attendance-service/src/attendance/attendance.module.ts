@@ -25,10 +25,6 @@ import { RolesGuard } from '../auth/guards/roles.guard';
     }),
   ],
   controllers: [AttendanceController],
-  providers: [
-    AttendanceService,
-    JwtStrategy,
-    RolesGuard,
-  ],
+  providers: [AttendanceService, JwtStrategy, RolesGuard],
 })
 export class AttendanceModule {}
