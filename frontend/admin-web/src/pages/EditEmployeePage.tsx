@@ -7,6 +7,10 @@ import {
   updateEmployee,
 } from '../services/employee.service';
 
+function isValidPhone(phone: string) {
+  return /^\d{10,15}$/.test(phone);
+}
+
 function EditEmployeePage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -16,7 +20,6 @@ function EditEmployeePage() {
   const [position, setPosition] = useState('');
   const [department, setDepartment] = useState('');
   const [phone, setPhone] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('');
   const [status, setStatus] = useState('ACTIVE');
 
   const [loading, setLoading] = useState(true);
@@ -46,7 +49,6 @@ function EditEmployeePage() {
         setPosition(employee.position);
         setDepartment(employee.department ?? '');
         setPhone(employee.phone ?? '');
-        setPhotoUrl(employee.photoUrl ?? '');
         setStatus(employee.status);
       } catch (err) {
         if (err instanceof Error) {
@@ -67,6 +69,13 @@ function EditEmployeePage() {
   ) {
     event.preventDefault();
 
+    if (phone && !isValidPhone(phone)) {
+      setError(
+        'Phone must contain only digits and be between 10 and 15 digits',
+      );
+      return;
+    }
+
     const token = localStorage.getItem(
       'admin_access_token',
     );
@@ -81,12 +90,10 @@ function EditEmployeePage() {
 
     try {
       await updateEmployee(token, id, {
-        employeeNumber,
         name,
         position,
         department,
         phone,
-        photoUrl,
         status,
       });
 
@@ -144,13 +151,11 @@ function EditEmployeePage() {
 
               <input
                 type="text"
-                required
                 value={employeeNumber}
-                onChange={(event) =>
-                  setEmployeeNumber(event.target.value)
-                }
-                className={inputClass}
+                readOnly
+                className={`${inputClass} cursor-not-allowed bg-gray-100 text-gray-500`}
               />
+
             </div>
 
             <div>
@@ -206,28 +211,21 @@ function EditEmployeePage() {
               </label>
 
               <input
-                type="text"
+                type="tel"
+                inputMode="numeric"
+                minLength={10}
+                maxLength={15}
+                pattern="[0-9]{10,15}"
                 value={phone}
                 onChange={(event) =>
                   setPhone(event.target.value)
                 }
                 className={inputClass}
               />
-            </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Photo URL
-              </label>
-
-              <input
-                type="url"
-                value={photoUrl}
-                onChange={(event) =>
-                  setPhotoUrl(event.target.value)
-                }
-                className={inputClass}
-              />
+              <p className="mt-1 text-xs text-gray-500">
+                Optional. 10-15 digits only.
+              </p>
             </div>
 
             <div>

@@ -12,6 +12,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -28,7 +29,7 @@ export class AuthController {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
 async createUser(
-  @Body() body: { email: string; password: string },
+  @Body() body: CreateUserDto,
   @Req() request: any,
 ) {
   return this.authService.createUser(

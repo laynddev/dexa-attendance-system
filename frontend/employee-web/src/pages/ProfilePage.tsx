@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import {
+  Link,
+  useNavigate,
+} from 'react-router-dom';
 
 import {
   getMyProfile,
@@ -12,6 +15,8 @@ import {
 } from '../services/auth.service';
 
 function ProfilePage() {
+  const navigate = useNavigate();
+
   const [profile, setProfile] =
     useState<EmployeeProfile | null>(null);
 
@@ -56,9 +61,17 @@ function ProfilePage() {
     loadProfile();
   }, []);
 
+  function handleLogout() {
+    localStorage.removeItem(
+      'employee_access_token',
+    );
+
+    navigate('/login');
+  }
+
   if (loading) {
     return (
-      <div className="p-8 text-gray-600">
+      <div className="p-4 md:p-8 text-gray-600">
         Loading profile...
       </div>
     );
@@ -66,7 +79,7 @@ function ProfilePage() {
 
   if (error) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="rounded-lg bg-red-50 p-4 text-red-600">
           {error}
         </div>
@@ -76,7 +89,7 @@ function ProfilePage() {
 
   if (!profile || !authUser) {
     return (
-      <div className="p-8 text-gray-600">
+      <div className="p-4 md:p-8 text-gray-600">
         Profile not found.
       </div>
     );
@@ -86,38 +99,38 @@ function ProfilePage() {
     profile.name.trim().charAt(0).toUpperCase();
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
               My Profile
             </h1>
 
-            <p className="mt-2 text-gray-600">
+            <p className="mt-2 text-sm text-gray-600 md:text-base">
               View your employee information.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Link
-              to="/profile/change-password"
-              className="rounded-lg border border-blue-600 px-5 py-2 font-medium text-blue-600 hover:bg-blue-50"
-            >
-              Change Password
-            </Link>
+<div className="hidden gap-3 md:flex">
+  <Link
+    to="/profile/change-password"
+    className="rounded-lg border border-blue-600 px-5 py-2 text-center font-medium text-blue-600 hover:bg-blue-50"
+  >
+    Change Password
+  </Link>
 
-            <Link
-              to="/profile/edit"
-              className="rounded-lg bg-blue-600 px-5 py-2 font-medium text-white hover:bg-blue-700"
-            >
-              Edit Profile
-            </Link>
-          </div>
+  <Link
+    to="/profile/edit"
+    className="rounded-lg bg-blue-600 px-5 py-2 text-center font-medium text-white hover:bg-blue-700"
+  >
+    Edit Profile
+  </Link>
+</div>
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow">
-          <div className="flex flex-col gap-6 border-b border-gray-200 pb-6 md:flex-row md:items-center">
+        <div className="rounded-xl bg-white p-4 shadow md:p-6">
+          <div className="flex flex-col items-center gap-4 border-b border-gray-200 pb-6 text-center md:flex-row md:gap-6 md:text-left">
             {profile.photoUrl ? (
               <img
                 src={profile.photoUrl}
@@ -131,7 +144,7 @@ function ProfilePage() {
             )}
 
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-gray-900 md:text-2xl">
                 {profile.name}
               </h2>
 
@@ -157,7 +170,7 @@ function ProfilePage() {
                 Employee Number
               </p>
 
-              <p className="mt-1 font-medium text-gray-900">
+              <p className="mt-1 break-words font-medium text-gray-900">
                 {profile.employeeNumber}
               </p>
             </div>
@@ -167,7 +180,7 @@ function ProfilePage() {
                 Company Email
               </p>
 
-              <p className="mt-1 font-medium text-gray-900">
+              <p className="mt-1 break-words font-medium text-gray-900">
                 {authUser.email}
               </p>
             </div>
@@ -213,6 +226,31 @@ function ProfilePage() {
             </div>
           </div>
         </div>
+
+       {/* Mobile Actions */}
+<div className="mt-6 space-y-3 md:hidden">
+  <Link
+    to="/profile/change-password"
+    className="block w-full rounded-lg border border-blue-600 px-5 py-3 text-center font-medium text-blue-600 transition hover:bg-blue-50"
+  >
+    Change Password
+  </Link>
+
+  <Link
+    to="/profile/edit"
+    className="block w-full rounded-lg bg-blue-600 px-5 py-3 text-center font-medium text-white transition hover:bg-blue-700"
+  >
+    Edit Profile
+  </Link>
+
+  <button
+    type="button"
+    onClick={handleLogout}
+    className="w-full rounded-lg border border-red-200 bg-red-50 px-5 py-3 font-medium text-red-600 transition hover:bg-red-100"
+  >
+    Logout
+  </button>
+</div>
       </div>
     </div>
   );

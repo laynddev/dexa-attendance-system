@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
 } from 'class-validator';
 
 export class CreateEmployeeDto {
@@ -13,10 +14,6 @@ export class CreateEmployeeDto {
   @IsString()
   @IsNotEmpty()
   password: string;
-
-  @IsString()
-  @IsNotEmpty()
-  employeeNumber: string;
 
   @IsString()
   @IsNotEmpty()
@@ -36,5 +33,9 @@ export class CreateEmployeeDto {
 
   @IsOptional()
   @IsString()
+  @Matches(/^\d{10,15}$/, {
+    message:
+      'phone must contain only digits and be between 10 and 15 digits',
+  })
   phone?: string;
 }

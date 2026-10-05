@@ -49,7 +49,20 @@ async summary(
 @Get('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
-async adminSummary() {
-  return this.attendanceService.findAll();
+async adminSummary(
+  @Query('startDate') startDate?: string,
+  @Query('endDate') endDate?: string,
+  @Query('employeeId') employeeId?: string,
+  @Query('page') page?: string,
+  @Query('limit') limit?: string,
+) {
+  return this.attendanceService.findAll(
+    startDate,
+    endDate,
+    employeeId,
+    page ? Number(page) : 1,
+    limit ? Number(limit) : 10,
+  );
 }
+
 }

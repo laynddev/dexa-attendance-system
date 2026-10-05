@@ -1,4 +1,7 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import {
+  NavLink,
+  useNavigate,
+} from 'react-router-dom';
 import type { ReactNode } from 'react';
 
 type EmployeeLayoutProps = {
@@ -11,11 +14,14 @@ function EmployeeLayout({
   const navigate = useNavigate();
 
   function handleLogout() {
-    localStorage.removeItem('employee_access_token');
+    localStorage.removeItem(
+      'employee_access_token',
+    );
+
     navigate('/login');
   }
 
-  const menuClass = ({
+  const desktopMenuClass = ({
     isActive,
   }: {
     isActive: boolean;
@@ -26,9 +32,21 @@ function EmployeeLayout({
         : 'text-gray-700 hover:bg-gray-100'
     }`;
 
+  const mobileMenuClass = ({
+    isActive,
+  }: {
+    isActive: boolean;
+  }) =>
+    `flex flex-1 flex-col items-center justify-center px-2 py-3 text-xs font-medium transition ${
+      isActive
+        ? 'text-blue-600'
+        : 'text-gray-500'
+    }`;
+
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <aside className="w-64 bg-white p-6 shadow">
+    <div className="min-h-screen bg-gray-100">
+      {/* Desktop Sidebar */}
+      <aside className="fixed inset-y-0 left-0 hidden w-64 bg-white p-6 shadow md:block">
         <div className="mb-8">
           <h1 className="text-xl font-bold text-gray-900">
             WFH Attendance
@@ -42,21 +60,21 @@ function EmployeeLayout({
         <nav className="space-y-2">
           <NavLink
             to="/dashboard"
-            className={menuClass}
+            className={desktopMenuClass}
           >
             Dashboard
           </NavLink>
 
           <NavLink
             to="/profile"
-            className={menuClass}
+            className={desktopMenuClass}
           >
             Profile
           </NavLink>
 
           <NavLink
             to="/attendance"
-            className={menuClass}
+            className={desktopMenuClass}
           >
             Attendance
           </NavLink>
@@ -73,9 +91,46 @@ function EmployeeLayout({
         </div>
       </aside>
 
-      <main className="flex-1">
+      {/* Content */}
+      <main className="min-w-0 pb-20 md:ml-64 md:pb-0">
         {children}
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-gray-200 bg-white shadow-lg md:hidden">
+        <NavLink
+          to="/attendance"
+          className={mobileMenuClass}
+        >
+          <span className="mb-1 text-xl">
+            ✓
+          </span>
+
+          Attendance
+        </NavLink>
+
+        <NavLink
+          to="/dashboard"
+          className={mobileMenuClass}
+        >
+          <span className="mb-1 text-xl">
+            ⌂
+          </span>
+
+          Dashboard
+        </NavLink>
+
+        <NavLink
+          to="/profile"
+          className={mobileMenuClass}
+        >
+          <span className="mb-1 text-xl">
+            ♙
+          </span>
+
+          Profile
+        </NavLink>
+      </nav>
     </div>
   );
 }

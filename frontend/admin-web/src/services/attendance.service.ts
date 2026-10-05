@@ -12,11 +12,47 @@ export type Attendance = {
   };
 };
 
+export type AttendancePagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export type AttendancesResponse = {
+  data: Attendance[];
+  pagination: AttendancePagination;
+};
+
 export async function getAllAttendances(
   token: string,
-): Promise<Attendance[]> {
+  startDate?: string,
+  endDate?: string,
+  employeeId?: string,
+  page = 1,
+  limit = 10,
+): Promise<AttendancesResponse> {
+  const params = new URLSearchParams();
+
+  if (startDate) {
+    params.set('startDate', startDate);
+  }
+
+  if (endDate) {
+    params.set('endDate', endDate);
+  }
+
+  if (employeeId) {
+    params.set('employeeId', employeeId);
+  }
+
+  params.set('page', String(page));
+  params.set('limit', String(limit));
+
+  const query = params.toString();
+
   const response = await fetch(
-    'http://localhost:3003/attendance/admin',
+    `http://localhost:3003/attendance/admin?${query}`,
     {
       method: 'GET',
       headers: {
@@ -26,7 +62,20 @@ export async function getAllAttendances(
   );
 
   if (!response.ok) {
-    throw new Error('Failed to load attendance data');
+    const error = await response
+      .json()
+      .catch(() => null);
+
+    const message = Array.isArray(
+      error?.message,
+    )
+      ? error.message.join(', ')
+      : error?.message;
+
+    throw new Error(
+      message ??
+        'Failed to load attendance data',
+    );
   }
 
   return response.json();

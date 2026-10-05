@@ -2,16 +2,19 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseFilePipe,
   Patch,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -131,12 +134,18 @@ export class EmployeesController {
     );
   }
 
-  @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  async findAll() {
-    return this.employeesService.findAll();
-  }
+@Get()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN')
+async findAll(
+  @Query('page') page?: string,
+  @Query('limit') limit?: string,
+) {
+  return this.employeesService.findAll(
+    page ? Number(page) : 1,
+    limit ? Number(limit) : 10,
+  );
+}
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -158,6 +167,19 @@ export class EmployeesController {
     return this.employeesService.update(
       id,
       updateEmployeeDto,
+      request.user.userId,
+    );
+  }
+
+    @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async remove(
+    @Param('id') id: string,
+    @Req() request: any,
+  ) {
+    return this.employeesService.remove(
+      id,
       request.user.userId,
     );
   }

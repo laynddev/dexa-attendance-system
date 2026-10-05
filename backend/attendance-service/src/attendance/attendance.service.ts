@@ -244,16 +244,115 @@ async summary(
     },
   });
 }
+async findAll(
+  startDate?: string,
+  endDate?: string,
+  employeeId?: string,
+  page = 1,
+  limit = 10,
+) {
+  const now = new Date();
 
-async findAll() {
-  return this.prisma.attendance.findMany({
-    orderBy: {
-      attendanceDate: 'desc',
+  // Convert current UTC time to WIB
+  const wibTime = new Date(
+    now.getTime() + 7 * 60 * 60 * 1000,
+  );
+
+  // Default: first day of current month
+  const defaultStartDate = new Date(
+    Date.UTC(
+      wibTime.getUTCFullYear(),
+      wibTime.getUTCMonth(),
+      1,
+    ),
+  );
+
+  // Default: today in WIB
+  const defaultEndDate = new Date(
+    Date.UTC(
+      wibTime.getUTCFullYear(),
+      wibTime.getUTCMonth(),
+      wibTime.getUTCDate(),
+    ),
+  );
+
+  const start = startDate
+    ? new Date(`${startDate}T00:00:00.000Z`)
+    : defaultStartDate;
+
+  const end = endDate
+    ? new Date(`${endDate}T00:00:00.000Z`)
+    : defaultEndDate;
+
+  const safePage =
+    Number.isInteger(page) && page > 0
+      ? page
+      : 1;
+
+  const safeLimit =
+    Number.isInteger(limit) &&
+    limit > 0 &&
+    limit <= 100
+      ? limit
+      : 10;
+
+  const skip =
+    (safePage - 1) * safeLimit;
+
+  const where = {
+    attendanceDate: {
+      gte: start,
+      lte: end,
     },
-    include: {
-      employee: true,
+
+    ...(employeeId
+      ? {
+          employeeId,
+        }
+      : {}),
+  };
+
+  const [attendances, total] =
+    await Promise.all([
+      this.prisma.attendance.findMany({
+        where,
+
+        skip,
+        take: safeLimit,
+
+        orderBy: [
+          {
+            attendanceDate: 'desc',
+          },
+          {
+            checkInAt: 'desc',
+          },
+        ],
+
+        include: {
+          employee: true,
+        },
+      }),
+
+      this.prisma.attendance.count({
+        where,
+      }),
+    ]);
+
+  const totalPages = Math.ceil(
+    total / safeLimit,
+  );
+
+  return {
+    data: attendances,
+
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      totalPages,
     },
-  });
+  };
 }
 
 }

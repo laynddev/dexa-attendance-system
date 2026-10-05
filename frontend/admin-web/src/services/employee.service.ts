@@ -12,11 +12,25 @@ export type Employee = {
   updatedAt: string;
 };
 
+export type EmployeePagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export type EmployeesResponse = {
+  data: Employee[];
+  pagination: EmployeePagination;
+};
+
 export async function getEmployees(
   token: string,
-): Promise<Employee[]> {
+  page = 1,
+  limit = 10,
+): Promise<EmployeesResponse> {
   const response = await fetch(
-    'http://localhost:3002/employees',
+    `http://localhost:3002/employees?page=${page}&limit=${limit}`,
     {
       method: 'GET',
       headers: {
@@ -35,7 +49,6 @@ export async function getEmployees(
 export type CreateEmployeeData = {
   email: string;
   password: string;
-  employeeNumber: string;
   name: string;
   position: string;
   department?: string;
@@ -71,7 +84,6 @@ export async function createEmployee(
 }
 
 export type UpdateEmployeeData = {
-  employeeNumber?: string;
   name?: string;
   position?: string;
   department?: string;
@@ -127,4 +139,27 @@ export async function updateEmployee(
   }
 
   return response.json();
+}
+
+export async function deleteEmployee(
+  token: string,
+  id: string,
+): Promise<void> {
+  const response = await fetch(
+    `http://localhost:3002/employees/${id}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+
+    throw new Error(
+      error?.message ?? 'Failed to delete employee',
+    );
+  }
 }

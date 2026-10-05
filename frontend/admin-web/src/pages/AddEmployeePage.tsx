@@ -4,18 +4,25 @@ import { useNavigate } from 'react-router-dom';
 
 import { createEmployee } from '../services/employee.service';
 
+function isValidPassword(password: string) {
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(
+    password,
+  );
+}
+
+function isValidPhone(phone: string) {
+  return /^\d{10,15}$/.test(phone);
+}
+
 function AddEmployeePage() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [employeeNumber, setEmployeeNumber] =
-    useState('');
   const [name, setName] = useState('');
   const [position, setPosition] = useState('');
   const [department, setDepartment] = useState('');
   const [phone, setPhone] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -24,6 +31,20 @@ function AddEmployeePage() {
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
+
+    if (!isValidPassword(password)) {
+      setError(
+        'Password must be at least 8 characters and contain at least one uppercase letter, one lowercase letter, and one number',
+      );
+      return;
+    }
+
+    if (phone && !isValidPhone(phone)) {
+      setError(
+        'Phone must contain only digits and be between 10 and 15 digits',
+      );
+      return;
+    }
 
     const token = localStorage.getItem(
       'admin_access_token',
@@ -41,12 +62,10 @@ function AddEmployeePage() {
       await createEmployee(token, {
         email,
         password,
-        employeeNumber,
         name,
         position,
         department: department || undefined,
         phone: phone || undefined,
-        photoUrl: photoUrl || undefined,
       });
 
       navigate('/employees');
@@ -119,22 +138,10 @@ function AddEmployeePage() {
                 }
                 className={inputClass}
               />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Employee Number *
-              </label>
-
-              <input
-                type="text"
-                required
-                value={employeeNumber}
-                onChange={(event) =>
-                  setEmployeeNumber(event.target.value)
-                }
-                className={inputClass}
-              />
+              <p className="mt-1 text-xs text-gray-500">
+                Minimum 8 characters with uppercase,
+                lowercase, and number.
+              </p>
             </div>
 
             <div>
@@ -190,29 +197,23 @@ function AddEmployeePage() {
               </label>
 
               <input
-                type="text"
+                type="tel"
+                inputMode="numeric"
+                minLength={10}
+                maxLength={15}
+                pattern="[0-9]{10,15}"
                 value={phone}
                 onChange={(event) =>
                   setPhone(event.target.value)
                 }
                 className={inputClass}
               />
+
+              <p className="mt-1 text-xs text-gray-500">
+                Optional. 10-15 digits only.
+              </p>
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Photo URL
-              </label>
-
-              <input
-                type="url"
-                value={photoUrl}
-                onChange={(event) =>
-                  setPhotoUrl(event.target.value)
-                }
-                className={inputClass}
-              />
-            </div>
           </div>
 
           <div className="mt-8 flex justify-end gap-3">
