@@ -150,7 +150,7 @@ export class EmployeesService {
         skip,
         take: safeLimit,
         orderBy: {
-          name: 'asc',
+          employeeNumber: 'asc',
         },
       }),
 
