@@ -281,7 +281,7 @@ export class AttendanceService {
             attendanceDate: 'desc',
           },
           {
-            checkInAt: 'desc',
+            checkInAt: 'asc',
           },
         ],
 
