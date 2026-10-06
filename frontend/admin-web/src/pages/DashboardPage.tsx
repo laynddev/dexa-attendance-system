@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 
 import { getEmployees } from '../services/employee.service';
-import { getAllAttendances } from '../services/attendance.service';
+import { getAttendanceStats } from '../services/attendance.service';
 
 type DashboardStats = {
-  totalEmployees: number;
   activeEmployees: number;
   checkedInToday: number;
   checkedOutToday: number;
@@ -20,12 +19,12 @@ function getTodayInWIB() {
 }
 
 function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalEmployees: 0,
-    activeEmployees: 0,
-    checkedInToday: 0,
-    checkedOutToday: 0,
-  });
+  const [stats, setStats] =
+    useState<DashboardStats>({
+      activeEmployees: 0,
+      checkedInToday: 0,
+      checkedOutToday: 0,
+    });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -37,60 +36,46 @@ function DashboardPage() {
       );
 
       if (!token) {
-        setError('Authentication token not found');
+        setError(
+          'Authentication token not found',
+        );
         setLoading(false);
         return;
       }
 
       try {
-  const today = getTodayInWIB();
+        setLoading(true);
+        setError('');
 
-  const [
-    employeeResponse,
-    attendanceResponse,
-  ] = await Promise.all([
-    getEmployees(token, 1, 100),
+        const today = getTodayInWIB();
 
-    getAllAttendances(
-      token,
-      today,
-      today,
-      undefined,
-      1,
-      100,
-    ),
-  ]);
+        const [
+          employeeResponse,
+          attendanceStats,
+        ] = await Promise.all([
+          getEmployees(
+            token,
+            1,
+            10,
+            'ACTIVE',
+          ),
 
-  const employees = employeeResponse.data;
+          getAttendanceStats(
+            token,
+            today,
+          ),
+        ]);
 
-  const todayAttendances =
-    attendanceResponse.data;
+        setStats({
+          activeEmployees:
+            employeeResponse.pagination.total,
 
-  const activeEmployees =
-    employees.filter(
-      (employee) =>
-        employee.status === 'ACTIVE',
-    ).length;
+          checkedInToday:
+            attendanceStats.checkedIn,
 
-  const checkedInToday =
-    todayAttendances.filter(
-      (attendance) =>
-        Boolean(attendance.checkInAt),
-    ).length;
-
-  const checkedOutToday =
-    todayAttendances.filter(
-      (attendance) =>
-        Boolean(attendance.checkOutAt),
-    ).length;
-
-  setStats({
-    totalEmployees:
-      employeeResponse.pagination.total,
-    activeEmployees,
-    checkedInToday,
-    checkedOutToday,
-  });
+          checkedOutToday:
+            attendanceStats.checkedOut,
+        });
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message);
@@ -116,9 +101,9 @@ function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <div className="min-h-screen bg-gray-100 p-4 md:p-8">
       <div className="mx-auto max-w-7xl">
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
           Admin Dashboard
         </h1>
 
@@ -132,17 +117,7 @@ function DashboardPage() {
           </div>
         )}
 
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl bg-white p-6 shadow">
-            <p className="text-sm text-gray-500">
-              Total Employees
-            </p>
-
-            <p className="mt-2 text-3xl font-bold text-gray-900">
-              {stats.totalEmployees}
-            </p>
-          </div>
-
+        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-xl bg-white p-6 shadow">
             <p className="text-sm text-gray-500">
               Active Employees

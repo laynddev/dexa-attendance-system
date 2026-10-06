@@ -5,26 +5,30 @@ import type { ReactNode } from 'react';
 import { getMe } from '../services/auth.service';
 import { getMyProfile } from '../services/employee.service';
 
-type ProtectedRouteProps = {
+type InactiveRouteProps = {
   children: ReactNode;
 };
 
-function ProtectedRoute({
+type RouteStatus =
+  | 'checking'
+  | 'unauthorized'
+  | 'active'
+  | 'inactive';
+
+function InactiveRoute({
   children,
-}: ProtectedRouteProps) {
-  const [authorized, setAuthorized] =
-    useState<boolean | null>(null);
-  const [employeeStatus, setEmployeeStatus] =
-    useState<string | null>(null);
+}: InactiveRouteProps) {
+  const [routeStatus, setRouteStatus] =
+    useState<RouteStatus>('checking');
 
   useEffect(() => {
-    async function checkAuthorization() {
+    async function checkEmployeeStatus() {
       const token = localStorage.getItem(
         'employee_access_token',
       );
 
       if (!token) {
-        setAuthorized(false);
+        setRouteStatus('unauthorized');
         return;
       }
 
@@ -36,45 +40,49 @@ function ProtectedRoute({
             'employee_access_token',
           );
 
-          setAuthorized(false);
+          setRouteStatus('unauthorized');
           return;
         }
 
         const employee = await getMyProfile(token);
 
-        setEmployeeStatus(employee.status);
-        setAuthorized(true);
+        if (employee.status === 'INACTIVE') {
+          setRouteStatus('inactive');
+          return;
+        }
+
+        setRouteStatus('active');
       } catch {
         localStorage.removeItem(
           'employee_access_token',
         );
 
-        setAuthorized(false);
+        setRouteStatus('unauthorized');
       }
     }
 
-    checkAuthorization();
+    checkEmployeeStatus();
   }, []);
 
-  if (authorized === null) {
+  if (routeStatus === 'checking') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-100">
         <p className="text-gray-600">
-          Checking authentication...
+          Checking employee status...
         </p>
       </div>
     );
   }
 
-  if (!authorized) {
+  if (routeStatus === 'unauthorized') {
     return <Navigate to="/login" replace />;
   }
 
-  if (employeeStatus === 'INACTIVE') {
-    return <Navigate to="/inactive" replace />;
+  if (routeStatus === 'active') {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
 }
 
-export default ProtectedRoute;
+export default InactiveRoute;

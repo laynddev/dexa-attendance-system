@@ -1,8 +1,10 @@
 import {
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+
 import { HttpService } from '@nestjs/axios';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { firstValueFrom } from 'rxjs';
@@ -108,8 +110,7 @@ export class EmployeesService {
       throw new InternalServerErrorException('Failed to create employee');
     }
   }
-
-  async findAll(page = 1, limit = 10) {
+  async findAll(page = 1, limit = 10, status = 'ACTIVE', search = '') {
     const safePage = Number.isInteger(page) && page > 0 ? page : 1;
 
     const safeLimit =
@@ -117,8 +118,35 @@ export class EmployeesService {
 
     const skip = (safePage - 1) * safeLimit;
 
+    const normalizedStatus = status.toUpperCase();
+    const normalizedSearch = search.trim();
+
+    const where = {
+      ...(normalizedStatus !== 'ALL' && {
+        status: normalizedStatus,
+      }),
+
+      ...(normalizedSearch && {
+        OR: [
+          {
+            name: {
+              contains: normalizedSearch,
+              mode: 'insensitive' as const,
+            },
+          },
+          {
+            employeeNumber: {
+              contains: normalizedSearch,
+              mode: 'insensitive' as const,
+            },
+          },
+        ],
+      }),
+    };
+
     const [employees, total] = await Promise.all([
       this.prisma.employee.findMany({
+        where,
         skip,
         take: safeLimit,
         orderBy: {
@@ -126,13 +154,36 @@ export class EmployeesService {
         },
       }),
 
-      this.prisma.employee.count(),
+      this.prisma.employee.count({
+        where,
+      }),
     ]);
+
+    const userIds = employees.map((employee) => employee.userId);
+
+    const users = await this.prisma.users.findMany({
+      where: {
+        id: {
+          in: userIds,
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+      },
+    });
+
+    const emailByUserId = new Map(users.map((user) => [user.id, user.email]));
+
+    const data = employees.map((employee) => ({
+      ...employee,
+      email: emailByUserId.get(employee.userId) ?? null,
+    }));
 
     const totalPages = Math.ceil(total / safeLimit);
 
     return {
-      data: employees,
+      data,
 
       pagination: {
         page: safePage,
@@ -142,13 +193,30 @@ export class EmployeesService {
       },
     };
   }
-
   async findOne(id: string) {
-    return this.prisma.employee.findUnique({
+    const employee = await this.prisma.employee.findUnique({
       where: {
         id,
       },
     });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    const user = await this.prisma.users.findUnique({
+      where: {
+        id: employee.userId,
+      },
+      select: {
+        email: true,
+      },
+    });
+
+    return {
+      ...employee,
+      email: user?.email ?? null,
+    };
   }
 
   async update(
@@ -166,17 +234,48 @@ export class EmployeesService {
       throw new NotFoundException('Employee not found');
     }
 
+    const currentUser = await this.prisma.users.findUnique({
+      where: {
+        id: existingEmployee.userId,
+      },
+      select: {
+        id: true,
+        email: true,
+      },
+    });
+
+    if (!currentUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    const { email, ...employeeData } = updateEmployeeDto;
+
+    const isEmailChanged = email !== currentUser.email;
+
+    if (isEmailChanged) {
+      const existingUser = await this.prisma.users.findUnique({
+        where: {
+          email,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (existingUser) {
+        throw new ConflictException('Email is already in use');
+      }
+    }
+
     let employee;
 
-    if (updateEmployeeDto.status !== undefined) {
-      const isActive = updateEmployeeDto.status === 'ACTIVE';
-
+    if (isEmailChanged) {
       [employee] = await this.prisma.$transaction([
         this.prisma.employee.update({
           where: {
             id,
           },
-          data: updateEmployeeDto,
+          data: employeeData,
         }),
 
         this.prisma.users.update({
@@ -184,7 +283,7 @@ export class EmployeesService {
             id: existingEmployee.userId,
           },
           data: {
-            is_active: isActive,
+            email,
           },
         }),
       ]);
@@ -193,7 +292,7 @@ export class EmployeesService {
         where: {
           id,
         },
-        data: updateEmployeeDto,
+        data: employeeData,
       });
     }
 
@@ -209,7 +308,10 @@ export class EmployeesService {
       },
     });
 
-    return employee;
+    return {
+      ...employee,
+      email,
+    };
   }
 
   async findByUserId(userId: string) {
@@ -344,15 +446,6 @@ export class EmployeesService {
         },
         data: {
           status: 'INACTIVE',
-        },
-      }),
-
-      this.prisma.users.update({
-        where: {
-          id: employee.userId,
-        },
-        data: {
-          is_active: false,
         },
       }),
     ]);

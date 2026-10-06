@@ -119,10 +119,17 @@ export class EmployeesController {
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
     return this.employeesService.findAll(
-      page ? Number(page) : 1,
-      limit ? Number(limit) : 10,
+      Number(page) || 1,
+      Number(limit) || 10,
+      status || 'ACTIVE',
+      search || '',
     );
   }
 

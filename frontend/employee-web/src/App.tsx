@@ -5,14 +5,16 @@ import {
   Routes,
 } from 'react-router-dom';
 
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import EmployeeLayout from './components/EmployeeLayout';
+import InactiveRoute from './components/InactiveRoute';
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
 import ProfilePage from './pages/ProfilePage';
 import EditProfilePage from './pages/EditProfilePage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import AttendancePage from './pages/AttendancePage';
+import InactiveEmployeePage from './pages/InactiveEmployeePage';
 
 function App() {
   return (
@@ -21,6 +23,15 @@ function App() {
         <Route
           path="/login"
           element={<LoginPage />}
+        />
+
+        <Route
+          path="/inactive"
+          element={
+            <InactiveRoute>
+              <InactiveEmployeePage />
+            </InactiveRoute>
+          }
         />
 
         <Route

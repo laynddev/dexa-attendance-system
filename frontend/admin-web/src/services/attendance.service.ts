@@ -24,6 +24,11 @@ export type AttendancesResponse = {
   pagination: AttendancePagination;
 };
 
+export type AttendanceStats = {
+  checkedIn: number;
+  checkedOut: number;
+};
+
 export async function getAllAttendances(
   token: string,
   startDate?: string,
@@ -75,6 +80,39 @@ export async function getAllAttendances(
     throw new Error(
       message ??
         'Failed to load attendance data',
+    );
+  }
+
+  return response.json();
+}
+
+export async function getAttendanceStats(
+  token: string,
+  date?: string,
+): Promise<AttendanceStats> {
+  const params = new URLSearchParams();
+
+  if (date) {
+    params.set('date', date);
+  }
+
+  const query = params.toString();
+
+  const response = await fetch(
+    `http://localhost:3003/attendance/admin/stats${
+      query ? `?${query}` : ''
+    }`,
+    {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      'Failed to load attendance statistics',
     );
   }
 

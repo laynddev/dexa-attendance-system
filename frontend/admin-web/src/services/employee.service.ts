@@ -2,14 +2,13 @@ export type Employee = {
   id: string;
   userId: string;
   employeeNumber: string;
+  email: string | null;
   name: string;
-  photoUrl: string | null;
+  photoUrl?: string | null;
   position: string;
-  department: string | null;
-  phone: string | null;
+  department?: string | null;
+  phone?: string | null;
   status: string;
-  createdAt: string;
-  updatedAt: string;
 };
 
 export type EmployeePagination = {
@@ -28,9 +27,18 @@ export async function getEmployees(
   token: string,
   page = 1,
   limit = 10,
+  status = 'ACTIVE',
+  search = '',
 ): Promise<EmployeesResponse> {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+    status,
+    search,
+  });
+
   const response = await fetch(
-    `http://localhost:3002/employees?page=${page}&limit=${limit}`,
+    `http://localhost:3002/employees?${params.toString()}`,
     {
       method: 'GET',
       headers: {
@@ -84,6 +92,7 @@ export async function createEmployee(
 }
 
 export type UpdateEmployeeData = {
+  email: string;
   name?: string;
   position?: string;
   department?: string;

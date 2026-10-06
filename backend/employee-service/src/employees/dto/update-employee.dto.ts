@@ -1,6 +1,10 @@
-import { IsIn, IsOptional, IsString, Matches } from 'class-validator';
+import { IsIn, IsEmail, IsOptional, IsString, Matches } from 'class-validator';
 
 export class UpdateEmployeeDto {
+  @IsString()
+  @IsEmail()
+  email?: string;
+
   @IsOptional()
   @IsString()
   name?: string;

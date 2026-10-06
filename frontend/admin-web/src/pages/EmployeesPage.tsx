@@ -21,6 +21,8 @@ function EmployeesPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [status, setStatus] = useState('ACTIVE');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     async function loadEmployees() {
@@ -42,6 +44,8 @@ function EmployeesPage() {
           token,
           page,
           PAGE_LIMIT,
+          status,
+          search,
         );
 
         setEmployees(response.data);
@@ -57,7 +61,7 @@ function EmployeesPage() {
     }
 
     loadEmployees();
-  }, [page]);
+  }, [page, status, search]);
 
   function handlePreviousPage() {
     setPage((currentPage) =>
@@ -82,7 +86,7 @@ function EmployeesPage() {
 
   async function handleDelete(employee: Employee) {
   const confirmed = window.confirm(
-    `Are you sure you want to delete ${employee.name} (${employee.employeeNumber})?\n\nThe employee will be deactivated and will no longer be able to log in.`,
+    `Are you sure you want to deactivate ${employee.name} (${employee.employeeNumber})?`,
   );
 
   if (!confirmed) {
@@ -107,16 +111,28 @@ function EmployeesPage() {
       employee.id,
     );
 
-    setEmployees((currentEmployees) =>
-      currentEmployees.map((item) =>
-        item.id === employee.id
-          ? {
-              ...item,
-              status: 'INACTIVE',
-            }
-          : item,
-      ),
-    );
+    if (status === 'ALL') {
+      setEmployees((currentEmployees) =>
+        currentEmployees.map((item) =>
+          item.id === employee.id
+            ? {
+                ...item,
+                status: 'INACTIVE',
+              }
+            : item,
+        ),
+      );
+    } else {
+      setEmployees((currentEmployees) =>
+        currentEmployees.filter(
+          (item) => item.id !== employee.id,
+        ),
+      );
+
+      setTotal((currentTotal) =>
+        Math.max(currentTotal - 1, 0),
+      );
+    }
   } catch (err) {
     if (err instanceof Error) {
       setError(err.message);
@@ -160,6 +176,34 @@ function EmployeesPage() {
           </Link>
         </div>
 
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+          <div className="flex-1">
+            <input
+              type="text"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Search by name or employee number..."
+              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          <select
+            value={status}
+            onChange={(event) => {
+              setStatus(event.target.value);
+              setPage(1);
+            }}
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          >
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+            <option value="ALL">All Status</option>
+          </select>
+        </div>
+
         {error && (
           <div className="mb-6 rounded-lg bg-red-50 p-4 text-red-600">
             {error}
@@ -173,6 +217,10 @@ function EmployeesPage() {
                 <tr>
                   <th className="px-6 py-4">
                     Employee No.
+                  </th>
+
+                  <th className="px-6 py-4">
+                    Email
                   </th>
 
                   <th className="px-6 py-4">
@@ -223,6 +271,10 @@ function EmployeesPage() {
                             {
                               employee.employeeNumber
                             }
+                          </td>
+
+                          <td className="px-6 py-4">
+                            {employee.email}
                           </td>
 
                           <td className="px-6 py-4">
@@ -290,7 +342,7 @@ function EmployeesPage() {
                       !error && (
                         <tr>
                           <td
-                            colSpan={7}
+                            colSpan={8}
                             className="px-6 py-8 text-center text-gray-500"
                           >
                             No employees found.

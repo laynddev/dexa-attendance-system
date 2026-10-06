@@ -40,6 +40,13 @@ export class AttendanceController {
     );
   }
 
+  @Get('admin/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async adminStats(@Query('date') date?: string) {
+    return this.attendanceService.getAdminStats(date);
+  }
+
   @Get('admin')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')

@@ -15,6 +15,7 @@ function EditEmployeePage() {
   const navigate = useNavigate();
   const { id } = useParams();
 
+  const [email, setEmail] = useState('');
   const [employeeNumber, setEmployeeNumber] = useState('');
   const [name, setName] = useState('');
   const [position, setPosition] = useState('');
@@ -44,6 +45,7 @@ function EditEmployeePage() {
           id,
         );
 
+        setEmail(employee.email ?? '');
         setEmployeeNumber(employee.employeeNumber);
         setName(employee.name);
         setPosition(employee.position);
@@ -90,6 +92,7 @@ function EditEmployeePage() {
 
     try {
       await updateEmployee(token, id, {
+        email,
         name,
         position,
         department,
@@ -156,6 +159,20 @@ function EditEmployeePage() {
                 className={`${inputClass} cursor-not-allowed bg-gray-100 text-gray-500`}
               />
 
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Email *
+              </label>
+
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className={inputClass}
+              />
             </div>
 
             <div>

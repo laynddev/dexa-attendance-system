@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -29,7 +30,7 @@ export class AttendanceService {
     }
 
     if (employee.status !== 'ACTIVE') {
-      throw new ConflictException('Employee is not active');
+      throw new ForbiddenException('Inactive employees cannot check in');
     }
 
     const employeeId = employee.id;
@@ -95,7 +96,7 @@ export class AttendanceService {
     }
 
     if (employee.status !== 'ACTIVE') {
-      throw new ConflictException('Employee is not active');
+      throw new ForbiddenException('Inactive employees cannot check out');
     }
 
     const employeeId = employee.id;
@@ -168,6 +169,12 @@ export class AttendanceService {
 
     if (!employee) {
       throw new NotFoundException('Employee profile not found');
+    }
+
+    if (employee.status !== 'ACTIVE') {
+      throw new ForbiddenException(
+        'Inactive employees cannot access attendance history',
+      );
     }
 
     const employeeId = employee.id;
@@ -299,6 +306,49 @@ export class AttendanceService {
         total,
         totalPages,
       },
+    };
+  }
+
+  async getAdminStats(date?: string) {
+    const now = new Date();
+
+    const wibTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+
+    const defaultDate = new Date(
+      Date.UTC(
+        wibTime.getUTCFullYear(),
+        wibTime.getUTCMonth(),
+        wibTime.getUTCDate(),
+      ),
+    );
+
+    const attendanceDate = date
+      ? new Date(`${date}T00:00:00.000Z`)
+      : defaultDate;
+
+    const [checkedIn, checkedOut] = await Promise.all([
+      this.prisma.attendance.count({
+        where: {
+          attendanceDate,
+          checkInAt: {
+            not: null,
+          },
+        },
+      }),
+
+      this.prisma.attendance.count({
+        where: {
+          attendanceDate,
+          checkOutAt: {
+            not: null,
+          },
+        },
+      }),
+    ]);
+
+    return {
+      checkedIn,
+      checkedOut,
     };
   }
 }

@@ -18,8 +18,17 @@ async function bootstrap() {
     }),
   );
 
+  const corsOrigins = process.env.CORS_ORIGINS;
+
+  if (!corsOrigins) {
+    throw new Error('CORS_ORIGINS environment variable is required');
+  }
+
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    origin: corsOrigins
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
